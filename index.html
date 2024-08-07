@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vue Basics</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jost:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <h1>Monster Slayer</h1>
+    </header>
+    <div id="game">
+      <div id="game-content">
+        <section id="description" class="container">
+          <h1 id="center-panel">
+            <button v-if="endGame" id="reset" @click="resetGame">Reset</button>
+          Game Controls
+          </h1>
+        </section>
+        <section id="monster" class="container">
+          <h2>Monster Health</h2>
+          <div class="healthbar">
+            <div
+              ref="monster"
+              class="healthbar__value"
+              :style="{'width': healthMonsterBar}"
+            ></div>
+          </div>
+        </section>
+        <section id="monsterLife" class="container">
+          <h2>Monster{{validateStart ? `: ${healthMonsterBar}` : ""}}</h2>
+        </section>
+        <section id="player" class="container">
+          <h2>Player Health</h2>
+          <div class="healthbar">
+            <div
+              ref="player"
+              class="healthbar__value"
+              :style="{width: healthPlayerBar}"
+            ></div>
+          </div>
+        </section>
+        <section id="playerLife" class="container">
+          <h2>
+            Player{{validateStart ? `: ${healthPlayerBar}` : `:
+            ${startCountdown}`}}
+          </h2>
+        </section>
+        <section id="controls" class="container">
+          <button
+            ref="simpleAttack"
+            :disabled="!attack || !validateStart"
+            @click="playerRoundAttack"
+          >
+            ATTACK
+          </button>
+          <button
+            ref="specialAttack"
+            :disabled="!superAttack || !validateStart"
+            @click="playerSpecialRoundAttack"
+          >
+            SPECIAL ATTACK
+          </button>
+          <button :disabled="!validateStart">HEAL</button>
+          <button :disabled="!validateStart">SURRENDER</button>
+        </section>
+      </div>
+      <div id="game-logs">
+        <section class="container-logs">
+          <h2>
+            <h2 id="container-count">Battle Log
+            <span id="count" style="color: blue">Points: {{score}}</span>
+          </h2>
+          <h2
+            v-if="displayFinalMessage.includes('loss')"
+            :style="{color: 'red'}"
+          >
+            {{displayFinalMessage}}
+          </h2>
+          <h2
+            v-else-if="displayFinalMessage.includes('wonn')"
+            :style="{color: 'green'}"
+          >
+            {{displayFinalMessage}}
+          </h2>
+          <div id="log">
+            <section
+              v-for="(logPanel, index) in htmlLogsList.logsRound"
+              :item="logPanel"
+              :index="index"
+              :key="logPanel.id"
+              id="rounds-log"
+              class="container-logs"
+            >
+              <h2>
+                Round {{index + 1}}
+                <span
+                  v-if="htmlLogsList.resultRound[index]=='Winn!'"
+                  :style="{color: 'green'}"
+                  >{{htmlLogsList.resultRound[index]}}</span
+                >
+                <span
+                  v-if="htmlLogsList.resultRound[index]=='Loss!'"
+                  :style="{color: 'red'}"
+                  >{{htmlLogsList.resultRound[index]}}</span
+                >
+              </h2>
+              <ul v-if="index<=rounds">
+                <div v-for="(oneLog, index) in logPanel" :key="oneLog">
+                  <li v-if="!(index % 2)" v-html="oneLog"></li>
+                  <li v-else-if="index % 2" v-html="oneLog"></li>
+                </div>
+              </ul>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>
