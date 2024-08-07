@@ -53,7 +53,7 @@
             ${startCountdown}`}}
           </h2>
         </section>
-        <section id="controls" class="container">
+        <section v-if="!validateStatistics" id="controls" class="container">
           <button
             ref="simpleAttack"
             :disabled="!attack || !validateStart"
@@ -68,8 +68,8 @@
           >
             SPECIAL ATTACK
           </button>
-          <button :disabled="!validateStart">HEAL</button>
-          <button :disabled="!validateStart">SURRENDER</button>
+          <button :disabled="healIndex<=2 || !validateStart" @click="playerRoundHeal">HEAL</button>
+          <button :disabled="surrender || !validateStart" @click="applySurrender">SURRENDER</button>
         </section>
       </div>
       <div id="game-logs">
@@ -120,6 +120,7 @@
               </ul>
             </section>
           </div>
+          <h2>{{surrender}}</h2>
         </section>
       </div>
     </div>
