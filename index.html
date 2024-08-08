@@ -20,7 +20,6 @@
       <div id="game-content">
         <section id="description" class="container">
           <h1 id="center-panel">
-            <button v-if="endGame" id="reset" @click="resetGame">Reset</button>
           Game Controls
           </h1>
         </section>
@@ -35,7 +34,12 @@
           </div>
         </section>
         <section id="monsterLife" class="container">
-          <h2>Monster{{validateStart ? `: ${healthMonsterBar}` : ""}}</h2>
+          <h2 v-if="rounds===0">
+            <span v-if="!validateStart && startCountDown && monsterHealth===100">SCORE</span>
+            <span v-else-if="validateStart">Monster: {{healthMonsterBar}}</span>
+            <span v-else >Monster: {{healthMonsterBar}}</span>
+          </h2>
+          <h2 v-else>Monster: {{healthMonsterBar}}</h2>
         </section>
         <section id="player" class="container">
           <h2>Player Health</h2>
@@ -50,26 +54,31 @@
         <section id="playerLife" class="container">
           <h2>
             Player{{validateStart ? `: ${healthPlayerBar}` : `:
-            ${startCountdown}`}}
+            ${startCountDown}`}}
           </h2>
         </section>
-        <section v-if="!validateStatistics" id="controls" class="container">
+        <section v-if="endGame"  class="container">
+          <button @click="resetGame">NEW GAME</button>
+        </section>
+        <section v-else id="controls" class="container">
           <button
             ref="simpleAttack"
             :disabled="!attack || !validateStart"
-            @click="playerRoundAttack"
+            @click="playerRoundAttack($event1); invalidateButtons($event2, 'toggleSimpleAttack')"
           >
             ATTACK
           </button>
           <button
             ref="specialAttack"
             :disabled="!superAttack || !validateStart"
-            @click="playerSpecialRoundAttack"
+            @click="playerSpecialRoundAttack($event1); invalidateButtons($event2, 'toggleSpecialAttack')"
           >
             SPECIAL ATTACK
           </button>
-          <button :disabled="healIndex<=2 || !validateStart" @click="playerRoundHeal">HEAL</button>
-          <button :disabled="surrender || !validateStart" @click="applySurrender">SURRENDER</button>
+          <button ref="heal" :disabled="healIndex<=2 || !validateStart" 
+          @click="playerRoundHeal($event1); invalidateButtons($event2, 'toggleHeal')">HEAL</button>
+          <button ref="surrender" :disabled="surrender || !validateStart" 
+          @click="applySurrender($event1); invalidateButtons($event2, 'toggleSurrender')">SURRENDER</button>
         </section>
       </div>
       <div id="game-logs">
@@ -120,7 +129,6 @@
               </ul>
             </section>
           </div>
-          <h2>{{surrender}}</h2>
         </section>
       </div>
     </div>

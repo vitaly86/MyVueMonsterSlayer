@@ -24,10 +24,10 @@ const game = Vue.createApp({
     data() {
         return {
             // Start Game Setup
-            startCountdown: 3,
+            startCountDown: 3,
             numberRounds: 0,
             validateStart: false,
-            startCount: null,
+            startCountInterval: [],
             transition: false,
 
             // Game Setup
@@ -35,7 +35,10 @@ const game = Vue.createApp({
                 logsRound: [[]],
                 resultRound: []
             },
-            attackInterval: null,
+            attackInterval: [],
+            endGame: false,
+            intervalEntry: false,
+            validateEvent: true,
             logAttackAction: "attacks and deals",
             logSuperAttackAction: "super attacks and deals",
             logHealAction: "heals himself for",
@@ -44,10 +47,6 @@ const game = Vue.createApp({
             score: 0,
             numberRounds: 3,
             rounds: 0,
-            endGame: false,
-
-            // End Game Setup
-            validateStatistics: false,
 
             // Player Setup
             playerHealth: 100,
@@ -70,36 +69,53 @@ const game = Vue.createApp({
             logMonsterRolle: "Monster",
             monsterResponse: false,
             monsterLateResponse: false,
-            monsterHealResponse: true
+            monsterHealResponse: true,
+
+            // Invalidate buttons
+            optionButtons: {
+                toggleSimpleAttack: true,
+                toggleSpecialAttack: true,
+                toggleHeal: true,
+                toggleSurrender: true
+            }
         }
     },
     watch: {
         playerHealth(value) {
             if (this.rounds <= this.numberRounds) {
-                setTimeout(() => {
-                    if (value <= 0) {
-                        this.executeDelay();
-                    } else if (value === 100) {
-                        this.transition = true;
+                if (value <= 0) {
+                    this.validateStart = false;
+                    setTimeout(async () => {
                         this.controlStartGame();
-                    }
-                }, 3000);
+                        await delay(3000);
+                        setTimeout(() => {
+                            this.nextRound();
+                        }, 0);
+                    }, 1000);
+                }
             }
         },
         monsterHealth(value) {
             if (this.rounds <= this.numberRounds) {
                 if (value <= 0) {
                     this.score++;
-                    this.executeDelay();
-                } else if (value === 100) {
+                    this.validateStart = false;
                     this.transition = true;
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         this.controlStartGame();
-                    }, 3000);
+                        await delay(3000);
+                        setTimeout(() => {
+                            this.nextRound();
+                        }, 0);
+                    }, 1000);
+                } else if (value === 100 && this.rounds) {
+                    this.clearAllIntervals(this.attackInterval);
+                    this.attackInterval.push(this.attackIntern);
                 }
             }
-        },
+        }
     },
+
     computed: {
         healthMonsterBar() {
             return `${this.monsterHealth}%`;
@@ -118,7 +134,9 @@ const game = Vue.createApp({
             }
         },
         healActionResponse() {
-            [this.heal, this.monsterHealResponse] = [this.monsterHealResponse, this.heal];
+            if (this.$refs['heal']) {
+                [this.heal, this.monsterHealResponse] = [this.monsterHealResponse, this.heal];
+            }
         },
         monsterResultConfig() {
             this.monsterAttack = damage(8, 15);
@@ -135,6 +153,18 @@ const game = Vue.createApp({
             }
             this.battleLogList(this.logMonsterRolle, this.logAttackAction, this.monsterAttack,
                 'log--monster', 'log--damage');
+            this.validateButtonsReturn;
+        },
+        attackIntern() {
+            return null;
+        },
+        validateButtonsReturn() {
+            for (let key of Object.keys(this.optionButtons)) {
+                this.optionButtons[key] = true;
+                console.log('Keys: ' + key);
+                console.log(this.optionButtons[key]);
+            }
+            this.validateEvent = true;
         },
         displayFinalMessage() {
             if (this.rounds == 3 && (!this.monsterHealth || this.playerHealth)) {
@@ -149,8 +179,56 @@ const game = Vue.createApp({
         }
     },
     methods: {
+
+        // Start Game Methods Configuration
+
+        startGameSetup() {
+            if (this.startCountDown > 0) {
+                console.log(this.startCountDown);
+                this.startCountDown--;
+                if (!this.startCountDown) {
+                    this.validateStart = true;
+                }
+
+                return this.startCountDown;
+            }
+        },
+        controlStartGame() {
+            const that = this;
+            this.startCountDown = 3;
+            this.validateStart = false;
+            this.clearAllIntervals(this.startCountInterval);
+            const myIntervalId = setInterval(() => {
+                that.startGameSetup();
+                if (!that.startGameSetup) {
+                    clearInterval(this.startCountInterval[0]);
+                    this.removeIntervalId(this.startCountInterval, this.startCountInterval[0]);
+                }
+            }, 1000);
+            this.startCountInterval.push(myIntervalId);
+        },
+        removeIntervalId(myInterval, interval) {
+            myInterval = myInterval.filter(id => id !== interval);
+        },
+        clearAllIntervals(myInterval) {
+            myInterval.forEach(intervalID => clearInterval(intervalID));
+            myInterval = [];
+        },
+        invalidateButtons(event, ref) {
+            if (this.validateEvent) {
+                for (let key of Object.keys(this.optionButtons)) {
+                    if (key !== ref) {
+                        this.optionButtons[key] = false;
+                    }
+                }
+                this.validateEvent = false;
+            }
+        },
+
+        // Player Methods Configuration
+
         playerRoundAttack() {
-            if (this.$refs['monster'] && this.attack) {
+            if (this.$refs['monster'] && this.attack && this.optionButtons['toggleSimpleAttack']) {
                 this.playerAttack = damage(5, 12);
                 this.monsterHealth -= this.playerAttack;
                 if (this.monsterHealth <= 0) {
@@ -160,11 +238,12 @@ const game = Vue.createApp({
                         this.htmlLogsList.resultRound.push(this.roundMessage);
                     }
                 }
+                this.simpleAttackPlayer;
                 this.battleLogList(this.logPlayerRolle, this.logAttackAction, this.playerAttack,
                     'log--player', 'log--damage');
-                this.simpleAttackPlayer;
+
+                this.prepareSpecialAttack();
             }
-            this.prepareSpecialAttack();
         },
         prepareSpecialAttack() {
             if (!this.setSuperAttack) {
@@ -175,7 +254,7 @@ const game = Vue.createApp({
             }
         },
         playerSpecialRoundAttack() {
-            if (this.setSuperAttack === 3) {
+            if (this.setSuperAttack === 3 && this.optionButtons['toggleSpecialAttack']) {
                 if (this.$refs['monster'] && this.superAttack) {
                     this.playerAttack = damage(10, 25);
                     this.monsterHealth -= this.playerAttack;
@@ -195,41 +274,75 @@ const game = Vue.createApp({
             }
         },
         playerRoundHeal() {
-            this.playerHeal = heal(8, 20);
-            this.playerHealth += this.playerHeal;
-            if (this.playerHealth >= 100) {
-                this.playerHealth = 100;
-            } else {
-                this.battleLogList(this.logPlayerRolle, this.logHealAction, this.playerHeal,
-                    'log--player', 'log--heal');
+            if (this.optionButtons['toggleHeal']) {
+                this.playerHeal = heal(8, 20);
+                this.playerHealth += this.playerHeal;
+                if (this.playerHealth >= 100) {
+                    this.playerHealth = 100;
+                } else {
+                    this.battleLogList(this.logPlayerRolle, this.logHealAction, this.playerHeal,
+                        'log--player', 'log--heal');
+                }
+                this.healActionResponse;
+                this.monsterAfterHealAttack();
+                this.healIndex = 0;
+                this.activateHeal = false;
             }
-            this.healActionResponse;
-            this.monsterAfterHealAttack();
-            this.healIndex = 0;
-            this.activateHeal = false;
-
 
         },
+        applySurrender() {
+            if (this.optionButtons['toggleSurrender']) {
+                this.surrender = true;
+                setTimeout(() => {
+                    const gameSurrender = confirm("Are you sure ?");
+                    if (gameSurrender) {
+                        this.nextRound();
+                        refreshPage();
+                        clearInterval(this.attackInterval);
+                        this.surrender = false;
+                    } else {
+                        this.surrender = false;
+                        this.validateButtonsReturn;
+                    }
+                }, 0);
+            }
+        },
+
+        // Monster Methods Configuration
+
         monsterShortAttackSetup() {
             if (!this.attack) {
                 this.monsterResultConfig;
                 this.simpleAttackPlayer;
+
             }
         },
         monsterLongAttackSetup() {
             if (!this.superAttack) {
                 this.monsterResultConfig;
+
             }
         },
         monsterHealSetup() {
             if (this.heal) {
                 this.monsterResultConfig;
                 this.healActionResponse;
+
             }
         },
         monsterRoundAttack() {
-            this.attackInterval = setInterval(() => {
-                this.monsterShortAttackSetup();
+            this.attackIntern = setInterval(() => {
+                if (!this.transition) {
+                    this.monsterShortAttackSetup();
+                } else if (this.transition && this.rounds) {
+                    clearInterval(this.attackInterval[0]);
+                    this.removeIntervalId(this.attackInterval, this.attackInterval[0]);
+                }
+
+                if (!this.rounds && !this.intervalEntry) {
+                    this.attackInterval.push(this.attackIntern);
+                    this.intervalEntry = true;
+                }
             }, 3000);
         },
         monsterLongRoundAttack() {
@@ -244,39 +357,27 @@ const game = Vue.createApp({
                 that.monsterHealSetup();
             }, 2000);
         },
+
+        // Battle Log Methods Configuration
+
         battleLogList(rolle, action, points, colorRolle, colorPoints) {
             const htmlLog = `<span class="${colorRolle}">${rolle}</span
               ><span> ${action} </span
               ><span class="${colorPoints}">${points}</span>`;
             this.htmlLogsList.logsRound[this.rounds].push(htmlLog);
         },
-        startGameSetup() {
-            if (this.startCountdown > 0) {
-                this.startCountdown--;
-                if (this.startCountdown === 0) {
-                    this.validateStart = true;
-                    this.transition = false;
-                    this.validateStatistics = false;
-                    clearInterval(this.startCount);
-                }
-                return this.startCountdown.toString();
-            }
-        },
-        controlStartGame() {
-            const that = this;
-            this.startCount = setInterval(() => {
-                that.startGameSetup();
-            }, 1000);
-        },
+
+
+        // Game Cycle Methods Configuration
+
         nextRound() {
             this.rounds++;
             this.playerHealth = 100;
             this.monsterHealth = 100;
-            this.startCountdown = 3;
             this.setSuperAttack = 3;
             this.healIndex = 0;
-            this.validateStart = false;
             this.activateHeal = false;
+            this.transition = false;
             if (!this.attack) {
                 this.attack = true;
                 this.monsterResponse = false;
@@ -296,29 +397,9 @@ const game = Vue.createApp({
                 this.nextRound();
                 refreshPage();
                 clearInterval(this.attackInterval);
-            } else {
-                this.validateStatistics = true;
             }
         },
-        applySurrender() {
-            this.surrender = true;
-            setTimeout(() => {
-                const gameSurrender = confirm("Are you sure ?");
-                if (gameSurrender) {
-                    this.nextRound();
-                    refreshPage();
-                    clearInterval(this.attackInterval);
-                    this.surrender = false;
-                } else {
-                    this.surrender = false;
-                }
-            }, 0);
-        },
 
-        async executeDelay() {
-            await delay(1000);
-            this.nextRound();
-        }
     },
     mounted() {
         this.controlStartGame();
@@ -326,8 +407,8 @@ const game = Vue.createApp({
         this.monsterLongRoundAttack();
     },
     beforeDestroy() {
-        clearInterval(this.startCount);
-        clearInterval(this.attackInterval);
+        this.clearAllIntervals(this.startCountInterval);
+        this.clearAllIntervals(this.attackInterval);
     },
 });
 
